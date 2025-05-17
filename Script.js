@@ -11,7 +11,7 @@ import {
   } from "./algorithms/render.js";
   
   import { calculateFCFS } from "./algorithms/fcfs.js";
-  import { calculateSJF } from "./algorithms/SJF.js";
+  import { calculateSJF } from "./algorithms/sjf.js";
   import { calculateNPP } from "./algorithms/npp.js";
   import { calculateRR } from "./algorithms/rr.js";
   import { calculateSRTF } from "./algorithms/srtf.js";
