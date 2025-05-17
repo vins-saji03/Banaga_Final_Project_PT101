@@ -1,127 +1,110 @@
-export function calculateRR(processes, timeQuantum) {
-    const n = processes.length;
-    const completed = [];
-    const remaining = processes.map((p) => ({
-      ...p,
-      remaining: p.burst,
-      start: null,
-    }));
-    const ganttChart = [];
-    const readyQueue = [];
-    const addedToQueue = new Set();
-  
-    let currentTime = 0;
-    let totalIdle = 0;
-  
-    while (completed.length < n && remaining.some((p) => p.remaining > 0)) {
-      console.log("Current Time:", currentTime);
-      console.log("Remaining Processes:", remaining);
-      console.log("Ready Queue:", readyQueue);
-  
-      // Add newly arrived processes in order of arrival
-      remaining
-        .filter(
-          (p) =>
-            p.arrival <= currentTime &&
-            !addedToQueue.has(p.process) &&
-            p.remaining > 0
-        )
-        .sort((a, b) => a.arrival - b.arrival)
-        .forEach((p) => {
-          readyQueue.push(p);
-          addedToQueue.add(p.process);
-          console.log("Added to queue:", p);
-        });
-  
-      if (readyQueue.length === 0) {
-        const future = remaining.filter(
-          (p) => p.remaining > 0 && p.arrival > currentTime
-        );
-        if (future.length > 0) {
-          const nextArrival = Math.min(...future.map((p) => p.arrival));
-          ganttChart.push({
-            label: "i",
-            start: currentTime,
-            end: nextArrival,
-            rbt: null,
-            queue: [],
-            arrived: future
-              .filter((p) => p.arrival <= nextArrival)
-              .map((p) => ({ process: p.process })),
-          });
-          totalIdle += nextArrival - currentTime;
-          currentTime = nextArrival;
-          continue;
-        } else {
-          break;
-        }
-      }
-  
-      const p = readyQueue.shift();
-      if (p.start === null) {
-        p.start = currentTime;
-      }
-  
-      const execTime = Math.min(timeQuantum, p.remaining);
-      const start = currentTime;
-      const end = currentTime + execTime;
-      p.remaining -= execTime;
-      currentTime = end;
-  
-      // Add newly arrived processes DURING execution
-      remaining
-        .filter(
-          (proc) =>
-            proc.arrival > start &&
-            proc.arrival <= end &&
-            proc.remaining > 0 &&
-            !addedToQueue.has(proc.process)
-        )
-        .sort((a, b) => a.arrival - b.arrival)
-        .forEach((proc) => {
-          readyQueue.push(proc);
-          addedToQueue.add(proc.process);
-          console.log("Added during execution:", proc);
-        });
-  
-      const displayQueue = [...readyQueue]
-        .filter((proc) => proc.remaining > 0)
-        .sort((a, b) => a.arrival - b.arrival)
-        .map((proc) => ({
-          process: proc.process,
-          remaining: proc.remaining,
-          arrival: proc.arrival,
-        }));
-  
+export function calculateRR(processes, quantum) {
+  const n = processes.length;
+  const queue = [];
+  const ganttChart = [];
+  const completed = [];
+
+  const remaining = processes.map((p) => ({
+    ...p,
+    remaining: p.burst,
+    start: null,
+    end: null,
+  }));
+
+  let currentTime = 0;
+  let totalIdle = 0;
+  let i = 0;
+
+  // Sort by arrival time initially
+  remaining.sort((a, b) => a.arrival - b.arrival);
+
+  while (completed.length < n) {
+    // Enqueue all that arrived at current time
+    while (i < n && remaining[i].arrival <= currentTime) {
+      queue.push(remaining[i]);
+      i++;
+    }
+
+    if (queue.length === 0) {
+      // CPU is idle, increment time by 1 only
       ganttChart.push({
-        label: p.process,
-        start,
-        end,
-        rbt: p.remaining,
-        queue: displayQueue,
+        label: "i",
+        start: currentTime,
+        end: currentTime + 1,
+        burstUsed: 1,
+        rbt: null,
+        queue: [],
+        arrived: remaining
+          .filter((p) => p.arrival === currentTime)
+          .map((p) => ({ process: p.process, priority: p.priority || null })),
       });
-  
-      if (p.remaining > 0) {
-        readyQueue.push(p); // Re-queue for next round
-      } else {
-        const turnaround = currentTime - p.arrival;
-        const waiting = turnaround - p.burst;
-        completed.push({
-          ...p,
-          completion: currentTime,
-          turnaround,
-          waiting,
+
+      totalIdle++;
+      currentTime++;
+      continue;
+    }
+
+    const current = queue.shift();
+    const executionTime = Math.min(quantum, current.remaining);
+    const sliceStart = currentTime;
+    const sliceEnd = sliceStart + executionTime;
+
+    if (current.start === null) current.start = currentTime;
+
+    // Get queue state before execution
+    const queueBefore = queue.map((p) => ({
+      process: p.process,
+      priority: p.priority || null,
+    }));
+
+    const arrivedDuring = [];
+
+    // Simulate time unit by unit
+    for (let t = 0; t < executionTime; t++) {
+      currentTime++;
+
+      // Add processes that arrive during execution
+      while (i < n && remaining[i].arrival <= currentTime) {
+        queue.push(remaining[i]);
+        arrivedDuring.push({
+          process: remaining[i].process,
+          priority: remaining[i].priority || null,
         });
+        i++;
       }
     }
-  
-    console.table(ganttChart);
-  
-    return {
-      result: completed,
-      ganttChart,
-      totalTime: currentTime,
-      totalIdle,
-    };
+
+    current.remaining -= executionTime;
+
+    ganttChart.push({
+      label: current.process,
+      start: sliceStart,
+      end: sliceEnd,
+      burstUsed: executionTime,
+      rbt: current.remaining,
+      queue: queueBefore,
+      arrived: arrivedDuring,
+    });
+
+    if (current.remaining > 0) {
+      queue.push(current);
+    } else {
+      current.end = currentTime;
+      const turnaround = current.end - current.arrival;
+      const waiting = turnaround - current.burst;
+      completed.push({
+        ...current,
+        completion: current.end,
+        turnaround,
+        waiting,
+      });
+    }
   }
-  
+
+  return {
+    result: completed,
+    ganttChart,
+    totalTime: currentTime,
+    totalIdle,
+  };
+}

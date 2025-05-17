@@ -11,7 +11,7 @@ import {
   } from "./algorithms/render.js";
   
   import { calculateFCFS } from "./algorithms/fcfs.js";
-  import { calculateSJF } from "./algorithms/sjf.js";
+  import { calculateSJF } from "./algorithms/SJF.js";
   import { calculateNPP } from "./algorithms/npp.js";
   import { calculateRR } from "./algorithms/rr.js";
   import { calculateSRTF } from "./algorithms/srtf.js";
@@ -34,7 +34,7 @@ import {
       renderResultTableWaiting(result);
       renderGanttChart(options, ganttChart);
       generateTimeline(result);
-      renderCPUUtilization(totalIdle, totalTime, ganttChart);
+      renderCPUUtilization(totalIdle, result, ganttChart);
     } catch (error) {
       console.error("Error during scheduling or rendering:", error);
     }

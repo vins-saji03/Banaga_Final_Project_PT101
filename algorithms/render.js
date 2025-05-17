@@ -201,6 +201,9 @@ function renderQueueTimeline(ganttChart, q, algorithm) {
       ) {
         span.classList.add("slashed");
         completedSet.add(name); // Mark as completed
+        if(algorithm === "SRTF"){
+            q.classList.add("left");
+        }
         console.log("Slashing", name, "at time", entry.end);
       } else if (
         ["FCFS", "SJF", "NPP"].includes(algorithm) &&
@@ -222,6 +225,8 @@ function renderQueueTimeline(ganttChart, q, algorithm) {
 }
 
 export function renderResultTableTurnaround(result) {
+ turnaroundResult = [];
+
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
 
@@ -237,9 +242,8 @@ export function renderResultTableTurnaround(result) {
     const row = `
       <tr>
         <td>Tt${process++}</td>
-        <td class="d-flex flex-row">${r.completion} <pre>  -  </pre> ${
-      r.arrival
-    } <pre>  =  </pre> ${r.turnaround}</td>
+        <td class="d-flex flex-row">${r.completion} <pre>  -  </pre> ${r.arrival
+      } <pre>  =  </pre> ${r.turnaround}</td>
       </tr>
     `;
     ave = (ave || 0) + r.turnaround;
@@ -248,12 +252,11 @@ export function renderResultTableTurnaround(result) {
   });
   const ttave = `<tr>
   <td>TTave</td>
-  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${
-    process - 1
-  } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
-    ave /
-    (process - 1)
-  ).toFixed(2)} ms</div></td>
+  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${process - 1
+    } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
+      ave /
+      (process - 1)
+    ).toFixed(2)} ms</div></td>
   </tr>`;
   tbody.insertAdjacentHTML("beforeend", ttave);
 }
@@ -273,24 +276,22 @@ export function renderResultTableWaiting(result) {
   result.forEach((r) => {
     const row = `
       <tr>
-        <td>Wt${process}</td>
-        <td class="d-flex flex-row">${
-          turnaroundResult[process - 1]
-        } <pre>  -  </pre> ${r.burst} <pre>  =  </pre> ${r.waiting}</td>
+        <td>Wt${process++}</td>
+        <td class="d-flex flex-row">${turnaroundResult[process-2]
+      } <pre>  -  </pre> ${r.burst} <pre>  =  </pre> ${r.waiting}</td>
       </tr>
     `;
-    process++;
     ave = (ave || 0) + r.waiting;
     tbody.insertAdjacentHTML("beforeend", row);
+     turnaroundResult.push(r.waiting);
   });
   const ttave = `<tr>
   <td>WTave</td>
-  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${
-    process - 1
-  } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
-    ave /
-    (process - 1)
-  ).toFixed(2)} ms</div> </td>
+  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${process - 1
+    } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
+      ave /
+      (process - 1)
+    ).toFixed(2)} ms</div> </td>
   </tr>`;
   tbody.insertAdjacentHTML("beforeend", ttave);
 }
@@ -336,34 +337,48 @@ export function generateTimeline(result) {
   timeline.appendChild(vrline);
 }
 
-export function renderCPUUtilization(totalIdle, totalTime, ganttChart) {
-    let timeline = [];
-    let totalBurst = 0;
-  
-    ganttChart.forEach((p) => {
-      const duration = p.end - p.start;
-      timeline.push(duration);
-      totalBurst += duration;
-    });
-  
-    const cpuUtil = ((totalTime - totalIdle) / totalTime) * 100;
-  
-    // CPU Utilization formula
-    document.getElementById("cpuUtil").textContent =
-      ` =  ${((totalTime - totalIdle) / totalTime).toFixed(4)}  × 100 = `;
-  
-    // Final CPU Utilization Percentage
-    document.getElementById("cpuTotal").textContent = `${cpuUtil.toFixed(2)}%`;
-  
-    // Timeline breakdown (e.g., 3 + 5 + 2)
-    const timelineElement = document.getElementById("completion");
-    timelineElement.textContent = `${timeline.join(" + ")}`;
-  
-    // Sum of burst times
-    const processCountElement = document.getElementById("process");
-    processCountElement.textContent = `${totalBurst}`;
-  }
-  
+export function renderCPUUtilization(totalIdle, result, ganttChart) {
+  let timeline = [];
+  let totalBurst = 0;
+
+  ganttChart.forEach((p) => {
+    const duration = p.end - p.start;
+    timeline.push(duration);
+    totalBurst += duration;
+  });
+
+  let totalBt = 0;
+
+  result.forEach((p) => {
+    totalBt += p.burst;
+  });
+
+// Get the last end time as the total time
+  const totalTime =
+    ganttChart.length > 0 ? ganttChart[ganttChart.length - 1].end : 0;
+
+  const cpuUtil =
+    totalTime === 0 ? 0 : ((totalTime - totalIdle) / totalTime) * 100;
+
+  // CPU Utilization formula
+  document.getElementById("cpuUtil").textContent =
+    ` × 100 = `;
+
+  // Final CPU Utilization Percentage
+
+  document.getElementById("burstt").textContent = ` ${totalBurst}`;
+  document.getElementById("adds").textContent = ` ${totalBt}`;
+  document.getElementById("cpuTotal").textContent = `${cpuUtil.toFixed(2)}%`;
+
+  // Timeline breakdown (e.g., 3 + 5 + 2)
+  const timelineElement = document.getElementById("completion");
+  timelineElement.textContent = `${timeline.join(" + ")}`;
+
+  // Sum of burst times
+  const processCountElement = document.getElementById("process");
+  processCountElement.textContent = `${totalBt}`;
+}
+
 
 export function renderTableHeader(tableSelector, algorithm) {
   const thead = document.querySelector(`${tableSelector} thead`);

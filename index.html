@@ -8,20 +8,20 @@
   <link rel="stylesheet" href="Style.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
-    <link href="https://fonts.cdnfonts.com/css/metrosant" rel="stylesheet">
-                
+  <link href="https://fonts.cdnfonts.com/css/metrosant" rel="stylesheet">
+
 </head>
 
 <body>
 
   <div class="min-vh-100 px-4 d-flex gap-2">
     <div class="container-xxl">
-      <h1 class="fs-2 fw-bold text-center bg-body-tertiary author">CPU Scheduling Algorithms Simulator</h1>
-      <p class="author text-center bg-body-tertiary">by Saji A. Bañaga</p>
-    
+      <h1 class="fs-2 fw-bold text-center bg-body-tertiary author mx-auto"  style="width: fit-content;">CPU Scheduling Algorithms Simulator</h1>
+      <p class="author text-center bg-body-tertiary mx-auto" style="width: fit-content;">by Saji A. Bañaga</p>
+
       <div class="d-flex gap-3 w-100 main">
         <!-- Left Column: Input -->
-        <section class="f-col mb-4 p-4" style="width: 40%; max-height: fix-content;" >
+        <section class="f-col mb-4 p-4" style="width: 40%; max-height: fix-content;">
           <h2 class="fs-5 fw-semibold mb-3 text-gray-700">Select Algorithm & Input Jobs</h2>
 
           <label for="algorithm" class="form-label fw-medium">Choose Algorithm (Type number):</label>
@@ -47,7 +47,7 @@
                   <th>Job</th>
                   <th>Arrival Time</th>
                   <th>Burst Time</th>
-               
+
                 </tr>
               </thead>
               <tbody id="jobsTableBody">
@@ -78,8 +78,7 @@
           </div>
 
           <div class="d-flex justify-content-between mb-3">
-            <button id="addJobBtn" class="btn btn-secondary d-flex align-items-center gap-2" aria-label="Add job row"
-             >
+            <button id="addJobBtn" class="btn btn-secondary d-flex align-items-center gap-2" aria-label="Add job row">
               <i class="fas fa-plus"></i> Add Job
             </button>
             <button id="removeJobBtn" class="btn btn-secondary d-flex align-items-center gap-2"
@@ -89,7 +88,7 @@
           </div>
 
           <button id="calculateBtn" class="btn btn-outline-secondary w-100 fw-semibold py-2 mt-3"
-            aria-label="Calculate scheduling" >
+            aria-label="Calculate scheduling">
             Calculate Scheduling
           </button>
         </section>
@@ -99,9 +98,12 @@
 
           <h2 class="fs-5 fw-semibold mb-3 text-gray-700">Scheduling Result</h2>
 
-          <article class="my-3 d-flex flex-column gap-4"> 
-            <div class="timeline-block"><h4 class="fs-6">Timeline:</h4><div id="timeline" class="d-flex mb-4"></div></div>
-            
+          <article class="my-3 d-flex flex-column gap-4">
+            <div class="timeline-block">
+              <h4 class="fs-6">Timeline:</h4>
+              <div id="timeline" class="d-flex mb-4"></div>
+            </div>
+
             <div class="ganttChart-block ">
               <h4 class="fs-6">Gantt Chart:</h4>
               <div id="ganttChart" class="px-3 ">
@@ -111,55 +113,46 @@
                 <div id="queue" class="d-flex flex-row"></div>
               </div>
             </div>
-            
+
             <div class="turnAround-block">
               <h4 class="fs-6">Turn-Around Time:</h4>
-              <div
-                  class="table-btn d-flex px-2 pe-4"
-                  style="max-width: 100%; width: 70%"
-                >
-                  <table class="table" id="resultTable">
-                    <tbody></tbody>
-                  </table>
-                </div>
+              <div class="table-btn d-flex px-2 pe-4 overflow-x" style="max-width: 100%; ">
+                <table class="table" id="resultTable">
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
-            
+
             <div class="waitingTime-block">
               <h4 class="fs-6">Waiting Time:</h4>
-              <div
-                  class="table-btn d-flex px-2 pe-4"
-                  style="max-width: 100%; width: 70%"
-                >
-                  <table class="table" id="resultTableWaitingTime">
-                    <tbody></tbody>
-                  </table>
-                </div>
+              <div class="table-btn d-flex px-2 pe-4 overflow-x" style="max-width: 100%; ">
+                <table class="table" id="resultTableWaitingTime">
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
-            
+
             <div class="CPUResult-block">
               <h4 class="fs-6">% of CPU Utilization:</h4>
-              <div
-                  class="cpuResult d-flex gap-3 px-2 fw-normal"
-                  id="cpuResult"
-                >
-                  <div class="d-flex flex-column cpuComp">
-                    <p id="process" class="text-center fw-normal fs-6"></p>
-                    <div class="cpu-vrline"></div>
-                    <p id="completion" class="fs-6 fw-normal"></p>
-                  </div>
-                  <p
-                    class="d-flex justify-content-center align-items-center fs-6 fw-normal"
-                  >
-                    <span id="cpuUtil"></span>
-                    <span
-                      id="cpuTotal"
-                      style="height: fit-content"
-                      class="px-2 bg-blue rounded ms-2 fs-6 fw-normal"
-                    ></span>
-                  </p>
+              <div class="cpuResult d-flex gap-3 px-2 fw-normal align-items-center" id="cpuResult">
+                <div class="d-flex flex-column cpuComp align-items-center">
+                  <p id="process" class="text-center fw-normal fs-6"></p>
+                  <div class="cpu-vrline"></div>
+                  <p id="completion" class="fs-6 fw-normal"></p>
                 </div>
+                <div> = </div>
+                <div class="d-flex flex-column align-items-center ">
+                  <span class="inline-block border-b border-bottom-1 pb-1 " id="adds">
+                  </span>
+                  <span class="inline-block pt-1" id="burstt"> </span>
+                </div>
+                
+                <span id="cpuUtil"></span>
+                <span id="cpuTotal" style="height: fit-content" class="px-2 bg-blue rounded ms-2 fs-6 fw-normal"></span>
+                </p>
+              </div>
             </div>
-            
+
           </article>
           <div id="metrics" class="text-dark" aria-label="Scheduling metrics"></div>
 
