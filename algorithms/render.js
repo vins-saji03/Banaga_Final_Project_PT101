@@ -97,31 +97,28 @@ export function renderGanttChart(options = {}, ganttChart) {
     btLbl.innerHTML = "<strong>Bt</strong>";
     btHeader.appendChild(btLbl);
 
-    // Build burst map for each process
-    const burstDurationsMap = {};
-    ganttChart.forEach((entry) => {
-      if (entry.label !== "i") {
-        burstDurationsMap[entry.label] ??= 0;
-        burstDurationsMap[entry.label] += entry.end - entry.start;
-      }
-    });
-
     // Add RBt and Bt per Gantt chart entry
     ganttChart.forEach((entry) => {
       const rbtDiv = document.createElement("div");
-      rbtDiv.style.width = "40px";
-      rbtDiv.style.minWidth = "40px";
+      rbtDiv.style.width = "42px";
+      rbtDiv.style.minWidth = "42px";
 
       const btDiv = document.createElement("div");
-      btDiv.style.width = "40px";
-      btDiv.style.minWidth = "40px";
+      btDiv.style.width = "42px";
+      btDiv.style.minWidth = "42px";
 
       if (entry.label === "i") {
         rbtDiv.textContent = "";
-        btDiv.textContent = "1";
+        btDiv.textContent = (
+          entry.burstUsed ?? entry.end - entry.start
+        ).toString();
+        // idle burst (usually 1)
       } else {
         rbtDiv.textContent = entry.rbt === 0 ? "" : entry.rbt ?? "";
-        btDiv.textContent = burstDurationsMap[entry.label] ?? "";
+        btDiv.textContent = (
+          entry.burstUsed ?? entry.end - entry.start
+        ).toString();
+        // Actual burst used per Gantt slice
       }
 
       rbtHeader.appendChild(rbtDiv);
@@ -201,8 +198,8 @@ function renderQueueTimeline(ganttChart, q, algorithm) {
       ) {
         span.classList.add("slashed");
         completedSet.add(name); // Mark as completed
-        if(algorithm === "SRTF"){
-            q.classList.add("left");
+        if (algorithm === "SRTF") {
+          q.classList.add("left");
         }
         console.log("Slashing", name, "at time", entry.end);
       } else if (
@@ -225,7 +222,7 @@ function renderQueueTimeline(ganttChart, q, algorithm) {
 }
 
 export function renderResultTableTurnaround(result) {
- turnaroundResult = [];
+  turnaroundResult = [];
 
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
@@ -242,8 +239,9 @@ export function renderResultTableTurnaround(result) {
     const row = `
       <tr>
         <td>Tt${process++}</td>
-        <td class="d-flex flex-row">${r.completion} <pre>  -  </pre> ${r.arrival
-      } <pre>  =  </pre> ${r.turnaround}</td>
+        <td class="d-flex flex-row">${r.completion} <pre>  -  </pre> ${
+      r.arrival
+    } <pre>  =  </pre> ${r.turnaround}</td>
       </tr>
     `;
     ave = (ave || 0) + r.turnaround;
@@ -252,11 +250,12 @@ export function renderResultTableTurnaround(result) {
   });
   const ttave = `<tr>
   <td>TTave</td>
-  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${process - 1
-    } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
-      ave /
-      (process - 1)
-    ).toFixed(2)} ms</div></td>
+  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${
+    process - 1
+  } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
+    ave /
+    (process - 1)
+  ).toFixed(2)} ms</div></td>
   </tr>`;
   tbody.insertAdjacentHTML("beforeend", ttave);
 }
@@ -277,21 +276,23 @@ export function renderResultTableWaiting(result) {
     const row = `
       <tr>
         <td>Wt${process++}</td>
-        <td class="d-flex flex-row">${turnaroundResult[process-2]
-      } <pre>  -  </pre> ${r.burst} <pre>  =  </pre> ${r.waiting}</td>
+        <td class="d-flex flex-row">${
+          turnaroundResult[process - 2]
+        } <pre>  -  </pre> ${r.burst} <pre>  =  </pre> ${r.waiting}</td>
       </tr>
     `;
     ave = (ave || 0) + r.waiting;
     tbody.insertAdjacentHTML("beforeend", row);
-     turnaroundResult.push(r.waiting);
+    turnaroundResult.push(r.waiting);
   });
   const ttave = `<tr>
   <td>WTave</td>
-  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${process - 1
-    } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
-      ave /
-      (process - 1)
-    ).toFixed(2)} ms</div> </td>
+  <td class="d-flex flex-row">${ave} <pre>  /  </pre> ${
+    process - 1
+  } <pre>  =  </pre> <div class="bg-blue px-2 rounded" style="height: fit-content">${(
+    ave /
+    (process - 1)
+  ).toFixed(2)} ms</div> </td>
   </tr>`;
   tbody.insertAdjacentHTML("beforeend", ttave);
 }
@@ -353,7 +354,7 @@ export function renderCPUUtilization(totalIdle, result, ganttChart) {
     totalBt += p.burst;
   });
 
-// Get the last end time as the total time
+  // Get the last end time as the total time
   const totalTime =
     ganttChart.length > 0 ? ganttChart[ganttChart.length - 1].end : 0;
 
@@ -361,8 +362,7 @@ export function renderCPUUtilization(totalIdle, result, ganttChart) {
     totalTime === 0 ? 0 : ((totalTime - totalIdle) / totalTime) * 100;
 
   // CPU Utilization formula
-  document.getElementById("cpuUtil").textContent =
-    ` × 100 = `;
+  document.getElementById("cpuUtil").textContent = ` × 100 = `;
 
   // Final CPU Utilization Percentage
 
@@ -378,7 +378,6 @@ export function renderCPUUtilization(totalIdle, result, ganttChart) {
   const processCountElement = document.getElementById("process");
   processCountElement.textContent = `${totalBt}`;
 }
-
 
 export function renderTableHeader(tableSelector, algorithm) {
   const thead = document.querySelector(`${tableSelector} thead`);

@@ -1,5 +1,6 @@
 export function calculateSRTF(processes) {
-  const n = processes.length;
+  const ganttChart = [];
+  const completed = [];
 
   const remaining = processes.map((p) => ({
     ...p,
@@ -8,104 +9,100 @@ export function calculateSRTF(processes) {
     end: null,
   }));
 
-  const completed = [];
-  const ganttChart = [];
-
   let currentTime = 0;
   let totalIdle = 0;
-  let lastProcessLabel = null;
-  let lastSlice = null;
+  let lastProcess = null;
 
-  // Accumulate idle periods
-  let idleStart = null;
-  let idleEnd = null;
-
-  while (completed.length < n) {
-    const available = remaining
+  while (completed.length < processes.length) {
+    const readyQueue = remaining
       .filter((p) => p.arrival <= currentTime && p.remaining > 0)
-      .sort((a, b) => a.remaining - b.remaining || a.arrival - b.arrival);
+      .sort((a, b) =>
+        a.remaining !== b.remaining
+          ? a.remaining - b.remaining
+          : a.arrival - b.arrival
+      );
 
-    const queueBeforeRun = remaining
+    if (readyQueue.length === 0) {
+      const arrivedDuringIdle = remaining
+        .filter((p) => p.arrival <= currentTime + 1 && p.remaining > 0)
+
+        .map((p) => ({
+          process: p.process,
+          priority: p.priority || null,
+          burst: p.remaining, // Show remaining burst instead of original burst
+          rbt: p.remaining,
+        }));
+
+      ganttChart.push({
+        label: "i",
+        start: currentTime,
+        end: currentTime + 1,
+        queue: [],
+        arrived: arrivedDuringIdle.length > 0 ? arrivedDuringIdle : null,
+        rbt: null,
+      });
+
+      totalIdle++;
+      currentTime++;
+      lastProcess = null;
+      continue;
+    }
+
+    const currentProc = readyQueue[0];
+
+    if (currentProc.start === null) {
+      currentProc.start = currentTime;
+    }
+
+    const start = currentTime;
+    currentProc.remaining--;
+    currentTime++;
+    const end = currentTime;
+
+    const queueSnapshot = remaining
       .filter((p) => p.arrival <= currentTime && p.remaining > 0)
+
       .sort((a, b) => a.arrival - b.arrival)
       .map((p) => ({
         process: p.process,
         priority: p.priority || null,
+        arrival: p.arrival,
+        burst: p.remaining, // <-- Here burst equals remaining burst time (rbt)
+        rbt: p.remaining,
       }));
 
-    if (available.length === 0) {
-      const futureArrivals = remaining.filter(
-        (p) => p.remaining > 0 && p.arrival > currentTime
-      );
+    const ganttEntry = {
+      label: currentProc.process,
+      start,
+      end,
+      queue: queueSnapshot,
+      arrived: [],
+      rbt: currentProc.remaining,
+    };
 
-      const nextArrival = Math.min(...futureArrivals.map((p) => p.arrival));
-      totalIdle += nextArrival - currentTime;
-
-      // Merge idle time
-      if (idleStart === null) {
-        idleStart = currentTime;
-      }
-      idleEnd = nextArrival;
-
-      currentTime = nextArrival;
-      lastProcessLabel = null;
-      lastSlice = null;
-      continue;
-    }
-
-    // Flush merged idle time before proceeding
-    if (idleStart !== null && idleEnd !== null) {
-      ganttChart.push({
-        label: "i",
-        start: idleStart,
-        end: idleEnd,
-        burstUsed: idleEnd - idleStart,
-        rbt: null,
-        queue: [],
-        arrived: remaining
-          .filter((p) => p.arrival > idleStart && p.arrival <= idleEnd)
-          .map((p) => ({ process: p.process, priority: p.priority || null })),
-      });
-      idleStart = null;
-      idleEnd = null;
-    }
-
-    const current = available[0];
-    if (current.start === null) current.start = currentTime;
-
-    const isNewSlice = lastProcessLabel !== current.process;
-
-    if (isNewSlice || !lastSlice) {
-      lastSlice = {
-        label: current.process,
-        start: currentTime,
-        end: currentTime + 1,
-        queue: queueBeforeRun,
-        rbt: current.remaining - 1,
-        burstUsed: 1,
-      };
-      ganttChart.push(lastSlice);
+    const lastGantt = ganttChart[ganttChart.length - 1];
+    if (
+      lastGantt &&
+      lastGantt.label === currentProc.process &&
+      lastGantt.end === start
+    ) {
+      lastGantt.end = end;
+      lastGantt.rbt = currentProc.remaining;
+      lastGantt.queue = queueSnapshot;
     } else {
-      lastSlice.end++;
-      lastSlice.burstUsed++;
-      lastSlice.rbt = current.remaining - 1;
+      ganttChart.push(ganttEntry);
     }
 
-    current.remaining--;
-    currentTime++;
-    lastProcessLabel = current.process;
-
-    if (current.remaining === 0) {
-      current.end = currentTime;
-      const turnaround = current.end - current.arrival;
-      const waiting = turnaround - current.burst;
+    if (currentProc.remaining === 0) {
+      currentProc.end = currentTime;
+      const turnaround = currentProc.end - currentProc.arrival;
+      const waiting = turnaround - currentProc.burst;
       completed.push({
-        ...current,
-        completion: current.end,
+        ...currentProc,
+        completion: currentProc.end,
         turnaround,
         waiting,
       });
-      lastSlice = null;
     }
   }
 
