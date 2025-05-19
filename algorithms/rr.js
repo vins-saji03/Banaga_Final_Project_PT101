@@ -15,91 +15,79 @@ export function calculateRR(processes, quantum) {
   let totalIdle = 0;
   let i = 0;
 
-  // Sort by arrival
+  // Sort by arrival time initially
   remaining.sort((a, b) => a.arrival - b.arrival);
 
   while (completed.length < n) {
-    // Add processes that arrive at currentTime
+    // Enqueue all that arrived at current time
     while (i < n && remaining[i].arrival <= currentTime) {
       queue.push(remaining[i]);
       i++;
     }
 
     if (queue.length === 0) {
-      // Idle time handling
-      currentTime++;
-
-      while (i < n && remaining[i].arrival <= currentTime) {
-        queue.push(remaining[i]);
-        i++;
-      }
-
-      const arrived = remaining
-        .filter((p) => p.arrival <= currentTime && p.remaining > 0)
-        .map((p) => ({
-          process: p.process,
-          priority: p.priority || null,
-          rbt: p.remaining,
-        }));
-
+      // CPU is idle, increment time by 1 only
       ganttChart.push({
         label: "i",
-        start: currentTime - 1,
-        end: currentTime,
+        start: currentTime,
+        end: currentTime + 1,
         burstUsed: 1,
         rbt: null,
         queue: [],
-        arrived: arrived,
+        arrived: remaining
+          .filter((p) => p.arrival === currentTime)
+          .map((p) => ({ process: p.process, priority: p.priority || null })),
       });
 
       totalIdle++;
+      currentTime++;
       continue;
     }
 
     const current = queue.shift();
-    const executionTime = Math.min(current.remaining, quantum); // ✅ always respect time quantum
-
+    const executionTime = Math.min(quantum, current.remaining);
     const sliceStart = currentTime;
     const sliceEnd = sliceStart + executionTime;
-    const arrivedDuring = [];
 
     if (current.start === null) current.start = currentTime;
 
-    // Simulate execution for each unit of the quantum
+    // Get queue state before execution
+    const queueBefore = queue.map((p) => ({
+      process: p.process,
+      priority: p.priority || null,
+    }));
+
+    const arrivedDuring = [];
+
+    // Simulate time unit by unit
     for (let t = 0; t < executionTime; t++) {
       currentTime++;
 
+      // Add processes that arrive during execution
       while (i < n && remaining[i].arrival <= currentTime) {
-        const arriving = remaining[i];
-        queue.push(arriving);
-        // Only add to arrivedDuring if the process is not already in the queue
-        if (!queue.some((p) => p.process === arriving.process)) {
-          arrivedDuring.push({
-            process: arriving.process,
-            priority: arriving.priority || null,
-            rbt: arriving.remaining,
-          });
-        }
+        queue.push(remaining[i]);
+        arrivedDuring.push({
+          process: remaining[i].process,
+          priority: remaining[i].priority || null,
+        });
         i++;
       }
     }
 
     current.remaining -= executionTime;
 
-    let queueBefore = queue.map((p) => ({
-      process: p.process,
-      priority: p.priority || null,
-      rbt: p.remaining,
-    }));
+    ganttChart.push({
+      label: current.process,
+      start: sliceStart,
+      end: sliceEnd,
+      burstUsed: executionTime,
+      rbt: current.remaining,
+      queue: queueBefore,
+      arrived: arrivedDuring,
+    });
 
-    // Include the current process in the queue snapshot ONLY if it's not yet finished
     if (current.remaining > 0) {
-      queue.push(current); // return to queue at the end
-      queueBefore.push({
-        process: current.process,
-        priority: current.priority || null,
-        rbt: current.remaining,
-      });
+      queue.push(current);
     } else {
       current.end = currentTime;
       const turnaround = current.end - current.arrival;
@@ -111,16 +99,6 @@ export function calculateRR(processes, quantum) {
         waiting,
       });
     }
-
-    ganttChart.push({
-      label: current.process,
-      start: sliceStart,
-      end: sliceEnd,
-      burstUsed: executionTime,
-      rbt: current.remaining,
-      queue: queueBefore,
-      arrived: arrivedDuring,
-    });
   }
 
   return {

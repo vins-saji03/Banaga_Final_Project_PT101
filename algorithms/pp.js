@@ -15,7 +15,6 @@ export function calculatePP(processes) {
 
   let currentTime = 0;
   let totalIdle = 0;
-  let lastProcessLabel = null;
 
   while (completed.length < n) {
     const available = remaining
@@ -24,6 +23,8 @@ export function calculatePP(processes) {
         if (a.priority !== b.priority) return a.priority - b.priority;
         return a.arrival - b.arrival;
       });
+
+    const allArrived = remaining.every((p) => p.arrival <= currentTime);
 
     if (available.length === 0) {
       const nextArrival = remaining
@@ -44,7 +45,6 @@ export function calculatePP(processes) {
               arrival: p.arrival,
               rbt: p.remaining,
             })),
-
           rbt: null,
         });
 
@@ -57,12 +57,18 @@ export function calculatePP(processes) {
     }
 
     const current = available[0];
-
     if (current.start === null) current.start = currentTime;
 
     const start = currentTime;
-    current.remaining--;
-    currentTime++;
+    let executionTime = 1;
+
+    if (allArrived) {
+      // Run to completion
+      executionTime = current.remaining;
+    }
+
+    current.remaining -= executionTime;
+    currentTime += executionTime;
     const end = currentTime;
 
     const queueSnapshot = remaining
@@ -75,15 +81,6 @@ export function calculatePP(processes) {
         rbt: p.remaining,
       }));
 
-    const ganttEntry = {
-      label: current.process,
-      start,
-      end,
-      queue: queueSnapshot,
-      rbt: current.remaining,
-    };
-
-    // If the last gantt entry is the same process, extend it instead of pushing a new one
     const lastGantt = ganttChart[ganttChart.length - 1];
     if (
       lastGantt &&
@@ -94,7 +91,13 @@ export function calculatePP(processes) {
       lastGantt.rbt = current.remaining;
       lastGantt.queue = queueSnapshot;
     } else {
-      ganttChart.push(ganttEntry);
+      ganttChart.push({
+        label: current.process,
+        start,
+        end,
+        queue: queueSnapshot,
+        rbt: current.remaining,
+      });
     }
 
     if (current.remaining === 0) {
